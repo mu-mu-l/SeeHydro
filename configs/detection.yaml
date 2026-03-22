@@ -1,0 +1,49 @@
+# SeeHydro 检测模型训练配置
+# 南水北调中线交叉建筑物目标检测（8类，YOLOv8）
+
+data:
+  data_yaml: "configs/data/detection_data.yaml"  # YOLO 格式数据集总配置文件路径
+  train_dir: "datasets/detection/images/train"   # 训练集图像目录
+  val_dir: "datasets/detection/images/val"        # 验证集图像目录
+  test_dir: "datasets/detection/images/test"      # 测试集图像目录（无测试集可留空）
+  class_names:                                    # 类别列表（顺序与标签 id 严格对应）
+    - "highway_bridge"                            # 0: 公路桥
+    - "railway_bridge"                            # 1: 铁路桥
+    - "siphon_inlet"                              # 2: 倒虹吸进口
+    - "siphon_outlet"                             # 3: 倒虹吸出口
+    - "aqueduct"                                  # 4: 渡槽
+    - "check_gate"                                # 5: 节制闸
+    - "drain_gate"                                # 6: 排水闸
+    - "diversion"                                 # 7: 分水建筑物
+
+model:
+  model_name: "yolov8m"                          # 模型规格：yolov8n/s/m/l/x
+  pretrained_weights: "yolov8m.pt"               # 预训练权重文件（自动下载或本地路径）
+  input_size: 1024                               # 训练与推理统一图像尺寸（像素）
+  num_classes: 8                                 # 检测类别数
+  conf_threshold: 0.25                           # 推理置信度阈值（低于此值的框被过滤）
+  iou_threshold: 0.45                            # NMS IoU 阈值（控制重叠框抑制程度）
+
+train:
+  batch_size: 4                                  # 批大小（高分大图显存占用高，建议 4-8）
+  epochs: 200                                    # 最大训练轮数
+  lr: 1.0e-3                                    # 初始学习率
+  warmup_epochs: 3                               # 学习率线性预热轮数
+  experiment_name: "snbd_det"                    # 实验名称（用于日志和权重目录命名）
+
+augmentation:                                   # YOLOv8 内置增强参数
+  mosaic: 1.0                                    # Mosaic 拼接增强概率
+  mixup: 0.1                                     # MixUp 增强概率
+  degrees: 15.0                                  # 随机旋转角度范围（±degrees）
+  translate: 0.1                                 # 随机平移比例（相对于图像尺寸）
+  scale: 0.5                                     # 随机缩放幅度
+  fliplr: 0.5                                    # 水平翻转概率
+  flipud: 0.5                                    # 垂直翻转概率
+  hsv_h: 0.015                                   # HSV 色调增强幅度
+  hsv_s: 0.7                                     # HSV 饱和度增强幅度
+  hsv_v: 0.4                                     # HSV 明度增强幅度
+
+output:
+  project_dir: "models/trained/detection"        # 训练产物根目录（各 run 存子目录）
+  best_model: "models/trained/det_best.pt"       # 最优模型权重最终路径
+  export_format: "onnx"                          # 部署导出格式：onnx | torchscript | engine

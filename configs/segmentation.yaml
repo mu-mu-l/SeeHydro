@@ -1,0 +1,50 @@
+# SeeHydro 分割模型训练配置
+# 南水北调中线渠道断面语义分割（5类）
+
+data:
+  image_dir: "data/tiles/highres/images"    # 训练图像切片目录
+  mask_dir: "data/tiles/highres/masks"      # 语义掩膜目录（0-4 类别值）
+  val_split: 0.2                             # 验证集划分比例（按比例随机切分）
+  random_seed: 42                            # 随机种子，保证数据划分可复现
+
+model:
+  model_name: "DeepLabV3Plus"               # 分割架构：DeepLabV3Plus | Unet
+  encoder: "resnet101"                       # 编码器主干网络
+  encoder_weights: "imagenet"               # 预训练权重来源
+  in_channels: 3                            # 输入通道数（RGB 为 3）
+  num_classes: 5                            # 分割类别数（含背景）
+  input_size: 512                           # 模型输入尺寸（H=W=input_size）
+  class_names:                              # 类别名称（索引与掩膜标签值一一对应）
+    - "背景"                                # 类别 0
+    - "水面"                                # 类别 1
+    - "边坡"                                # 类别 2
+    - "马道"                                # 类别 3
+    - "管理道路"                            # 类别 4
+
+train:
+  batch_size: 8                             # 批大小（显存不足时可调小）
+  epochs: 100                               # 最大训练轮数
+  lr: 1.0e-4                               # 初始学习率（AdamW）
+  weight_decay: 1.0e-4                     # L2 权重衰减系数
+  early_stopping_patience: 15              # 早停耐心轮数（mIoU 不提升则触发）
+  loss: "dice_ce"                          # 损失函数：dice_ce | focal | ce
+  lr_scheduler:
+    name: "cosine_warm_restarts"           # 余弦退火热重启调度器
+    T_0: 10                                # 首次重启前的周期长度（epoch）
+    T_mult: 2                              # 每次重启后周期倍率
+  num_workers: 4                           # DataLoader 并行进程数
+
+augmentation:
+  enabled: true                            # 是否启用数据增强（关闭则仅做 CenterCrop）
+  horizontal_flip: true                    # 水平翻转，p=0.5
+  vertical_flip: true                      # 垂直翻转，p=0.5
+  random_rotate90: true                    # 随机 90° 旋转，p=0.5
+  shift_scale_rotate: true                 # 平移/缩放/旋转复合变换，p=0.5
+  noise_blur: true                         # 高斯噪声或模糊，p=0.3
+  brightness_contrast: true               # 亮度/对比度随机扰动，p=0.5
+  hue_saturation: false                    # 色调/饱和度增强（遥感场景默认关闭）
+
+output:
+  checkpoint_dir: "models/trained"         # 检查点保存根目录
+  best_model: "models/trained/seg_best.pth"  # 最优模型权重路径（按 mIoU 选取）
+  log_dir: "logs/segmentation"             # 训练日志目录

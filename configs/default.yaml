@@ -1,0 +1,110 @@
+# SeeHydro 全局默认配置
+
+project:
+  name: "SeeHydro"
+  crs: "EPSG:4326"            # 默认坐标系
+  utm_crs: "EPSG:32649"       # UTM投影（中线主体位于49N带）
+
+# 南水北调中线线路
+route:
+  source: "osm"                # osm | local
+  local_path: "data/route/snbd_centerline.geojson"
+  osm_tags:
+    waterway: "canal"
+    name: "南水北调中线"
+  # 起止点（丹江口 -> 北京团城湖）
+  start_point: [111.51, 32.68]
+  end_point: [116.27, 39.99]
+
+# Sentinel-2 下载
+sentinel2:
+  date_range: ["2024-01-01", "2025-12-31"]
+  cloud_pct_max: 10
+  bands: ["B2", "B3", "B4", "B8", "B11"]
+  resolution: 10               # 米
+  segment_length: 10000        # 分段长度（米）
+  buffer_width: 2000           # 缓冲宽度（米）
+  output_dir: "data/sentinel2"
+
+# 高分影像
+highres:
+  input_dir: "data/highres"
+  supported_formats: [".tif", ".tiff", ".img", ".jp2"]
+  buffer_width: 500            # 缓冲宽度（米）
+
+# 预处理
+preprocessing:
+  # 裁剪
+  clip:
+    sentinel2_buffer: 2000     # 米
+    highres_buffer: 500        # 米
+  # 切片
+  tiling:
+    sentinel2:
+      tile_size: 512
+      overlap: 0.25
+    highres:
+      tile_size: 1024
+      overlap: 0.5
+  # 归一化
+  normalize:
+    method: "percentile"       # percentile | minmax
+    percentile_low: 2
+    percentile_high: 98
+
+# 分割模型
+segmentation:
+  model_name: "DeepLabV3Plus"  # DeepLabV3Plus | Unet
+  encoder: "resnet101"
+  encoder_weights: "imagenet"
+  in_channels: 3
+  num_classes: 5               # 背景/水面/边坡/马道/管理道路
+  input_size: 512
+  # 训练
+  batch_size: 8
+  epochs: 100
+  lr: 1.0e-4
+  weight_decay: 1.0e-4
+  early_stopping_patience: 15
+  loss: "dice_ce"              # dice_ce | focal | ce
+  # 保存
+  checkpoint_dir: "models/trained"
+  best_model: "models/trained/seg_best.pth"
+
+# 检测模型
+detection:
+  model_name: "yolov8m"
+  input_size: 1024
+  num_classes: 8
+  class_names:
+    - "highway_bridge"
+    - "railway_bridge"
+    - "siphon_inlet"
+    - "siphon_outlet"
+    - "aqueduct"
+    - "check_gate"
+    - "drain_gate"
+    - "diversion"
+  # 训练
+  batch_size: 4
+  epochs: 200
+  lr: 1.0e-3
+  # 保存
+  project_dir: "models/trained/detection"
+  best_model: "models/trained/det_best.pt"
+
+# 参数提取
+extraction:
+  canal_width:
+    sample_interval: 50        # 采样间距（米）
+    min_width: 5               # 最小有效宽度（米）
+    max_width: 200             # 最大有效宽度（米）
+  bridge:
+    min_span: 10               # 最小跨度（米）
+
+# 输出
+export:
+  vector_dir: "outputs/vectors"
+  report_dir: "outputs/reports"
+  figure_dir: "outputs/figures"
+  formats: ["geojson", "shapefile"]
